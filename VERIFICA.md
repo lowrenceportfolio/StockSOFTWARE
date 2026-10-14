@@ -8,8 +8,17 @@ alle foto, backup/ripristino delle immagini, migrazione dalla versione 1.0,
 correzione di costi e margini, modifica vendite e spese, protezione dello storico,
 quantità e prezzo dei box, tracking, scadenze e distinzione fra consegna e incasso.
 
-La compilazione e i controlli Windows sono configurati in GitHub Actions:
-16 test della prima versione erano già stati superati anche su Windows;
-la versione 1.1 deve superare l’intera suite aggiornata prima della consegna.
+## Verifica Windows
 
-Il workflow non amplia i permessi GitHub e conserva `contents: read`.
+La build [38555004325](https://github.com/lowrenceportfolio/StockSOFTWARE/actions/runs/38555004325)
+del commit `6200a695fd5ce66e876e8a92d7e8920215091b3c` è riuscita.
+
+- Tutti i 33 test: superati su Windows.
+- Compilazione PyInstaller e Inno Setup: superate.
+- Avvio dei sorgenti con visualizzazione delle foto: superato.
+- Avvio dell’eseguibile con anteprima e scheda foto: superato.
+- Installazione e avvio dell’app installata, incluse le foto: superati.
+- Disinstallazione: superata.
+
+Il workflow conserva `contents: read`. Nessun dato reale dell’utilizzatore
+è stato usato nei test. Il setup è `VintDesk-Setup-1.1.0.exe`.

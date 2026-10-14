@@ -7,7 +7,8 @@ per avviare i sorgenti occorre installare le dipendenze di requirements.txt.
 **Versione 1.1.0:** foto caricabili durante la creazione del capo, modifica
 completa di capi, box, vendite e spese; gestione di corriere, tracking e scadenze.
 La migrazione conserva i dati della versione 1.0 e crea una copia di sicurezza
-prima dell’aggiornamento del database.
+prima dell’aggiornamento del database. Tutti i 33 test e i controlli Windows
+di avvio, foto, installazione e disinstallazione sono stati superati.
 
 ## Cosa fa
 
