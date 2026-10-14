@@ -4,9 +4,9 @@ Gestionale desktop personale per stock e vendite Vinted. Interfaccia italiana,
 database SQLite locale, nessun abbonamento e nessuna dipendenza di esecuzione
 esterna oltre a Python quando si avvia dai sorgenti.
 
-**Stato della consegna:** prima versione implementata. Test del gestionale
-superati; l'installer Windows deve essere compilato e verificato dal workflow
-GitHub incluso prima dell'uso sul PC. Il pacchetto sorgenti non è un `.exe`.
+**Versione 1.0.0:** installer Windows compilato e verificato. Tutti i 16 test,
+la verifica dell'eseguibile e i controlli di installazione/disinstallazione
+sono stati superati su GitHub Actions.
 
 ## Cosa fa
 
@@ -29,15 +29,14 @@ browser. I dati del negozio non vengono inviati a GitHub.
 
 Repository del progetto: [StockSOFTWARE](https://github.com/lowrenceportfolio/StockSOFTWARE).
 
-1. Apri [Actions](https://github.com/lowrenceportfolio/StockSOFTWARE/actions).
-2. Seleziona l'ultima esecuzione riuscita di **Crea installer Windows**.
-3. Scarica l'artefatto **VintDesk-Windows-Installer** in fondo alla pagina.
-4. Estrai lo ZIP e avvia `VintDesk-Setup-1.0.0.exe` sul PC Windows.
+Apri [la build verificata](https://github.com/lowrenceportfolio/StockSOFTWARE/actions/runs/38546127005)
+e scarica l'artefatto **VintDesk-Windows-Installer** in fondo alla pagina.
+Estrai lo ZIP e avvia `VintDesk-Setup-1.0.0.exe` sul PC Windows.
+Non devi installare Python.
 
-Il workflow parte con ogni push su `main`, oppure da **Run workflow**.
-Genera l'app con PyInstaller, crea il setup con Inno Setup e verifica
-interfaccia, eseguibile, installazione e disinstallazione.
-Gli artefatti sono conservati per 30 giorni: conserva una copia del setup.
+Ogni push su `main` compila e verifica il software. Gli artefatti sono disponibili
+per 30 giorni: conserva una copia del setup. La pubblicazione automatica in
+Releases non è configurata; il workflow usa soltanto `contents: read`.
 
 La repo contiene il software. Stock, vendite e backup rimangono sul tuo PC.
 

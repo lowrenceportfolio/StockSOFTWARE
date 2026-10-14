@@ -11,10 +11,19 @@ Verifica eseguita il 14 ottobre 2026 sui sorgenti Python.
   pulsanti di salvataggio visibili e sezioni backup/CSV organizzate in schede.
 - Compilazione dei moduli Python: superata.
 
-**Non ancora eseguito:** compilazione Windows, test dell'eseguibile compilato,
-installazione e disinstallazione Windows. Questi controlli sono configurati
-nel workflow GitHub incluso. La verifica Windows è documentata dai risultati
-di GitHub Actions; i sorgenti non includono un installer già compilato.
+## Verifica Windows
 
-Il display di prova Linux non offre i font Segoe UI di Windows, quindi la
-resa tipografica effettiva su Windows deve essere controllata dopo la build.
+Esecuzione riuscita: [GitHub Actions 38546127005](https://github.com/lowrenceportfolio/StockSOFTWARE/actions/runs/38546127005).
+Commit sorgenti: `ab43cd159d00aeb740e366c09af86b3761083cf0`.
+
+- Tutti i 16 test: superati su Windows.
+- Build PyInstaller e compilazione Inno Setup: superate.
+- Apertura di tutte le schermate dai sorgenti: superata.
+- Avvio e apertura di tutte le schermate dell'eseguibile: superati.
+- Installazione senza interazione: superata.
+- Avvio dell'app installata: superato.
+- Disinstallazione: superata.
+
+Installer: `VintDesk-Setup-1.0.0.exe`, disponibile negli artefatti della build GitHub Actions.
+I test sono automatici sul runner Windows; non sostituiscono una prova sul PC
+dell'utilizzatore. I dati reali non sono stati usati nei test.
