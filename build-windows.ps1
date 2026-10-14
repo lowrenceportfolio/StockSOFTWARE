@@ -14,4 +14,4 @@ if (-not (Test-Path $compiler)) {
 }
 & $compiler 'installer\vintdesk.iss'
 if ($LASTEXITCODE -ne 0) { throw 'Creazione installer fallita' }
-Write-Host 'Installer pronto in output\VintDesk-Setup-1.0.0.exe'
+Write-Host 'Installer pronto in output\VintDesk-Setup-1.1.0.exe'

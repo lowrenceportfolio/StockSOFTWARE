@@ -59,21 +59,21 @@ class LedgerTests(unittest.TestCase):
         self.sale(ident)
         self.assertEqual(len(self.store.sales()),2)
 
-    def test_duplicate_sale_and_edit_blocked(self):
+    def test_duplicate_sale_blocked_and_cost_correction_supported(self):
         ident = self.item()
         self.sale(ident)
         with self.assertRaises(ValueError):
             self.sale(ident)
-        with self.assertRaises(ValueError):
-            self.store.update_item(ident,dict(title='Changed',cost='50'))
-        self.assertEqual(self.store.sales()[0]['cost_snapshot'],700)
+        self.store.update_item(ident,dict(title='Changed',cost='50',status='In vendita'))
+        self.assertEqual(self.store.sales()[0]['cost_snapshot'],5000)
+        self.assertEqual(self.store.item(ident)['status'],'Venduto')
 
-    def test_box_cost_is_locked(self):
+    def test_box_cost_correction_updates_total(self):
         self.store.add_lot('Box','Test','2026-10-14','100',10)
         ident = self.store.items()[0]['id']
         self.store.update_item(ident,dict(title='Nome vero',cost='10'))
-        with self.assertRaises(ValueError):
-            self.store.update_item(ident,dict(title='Nome vero',cost='9'))
+        self.store.update_item(ident,dict(title='Nome vero',cost='9'))
+        self.assertEqual(self.store.lots()[0]['total'],9900)
 
     def write_csv(self, rows):
         path = self.root/'import.csv'

@@ -1,5 +1,5 @@
 #define AppName "VintDesk"
-#define AppVersion "1.0.0"
+#define AppVersion "1.1.0"
 [Setup]
 AppId={{01E19EA8-64F2-4A3B-9717-92CB0EA40AF9}
 AppName={#AppName}

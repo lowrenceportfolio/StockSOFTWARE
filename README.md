@@ -1,16 +1,17 @@
 # VintDesk
 
 Gestionale desktop personale per stock e vendite Vinted. Interfaccia italiana,
-database SQLite locale, nessun abbonamento e nessuna dipendenza di esecuzione
-esterna oltre a Python quando si avvia dai sorgenti.
+database SQLite locale, nessun abbonamento. L’installer include Python e Pillow;
+per avviare i sorgenti occorre installare le dipendenze di requirements.txt.
 
-**Versione 1.0.0:** installer Windows compilato e verificato. Tutti i 16 test,
-la verifica dell'eseguibile e i controlli di installazione/disinstallazione
-sono stati superati su GitHub Actions.
+**Versione 1.1.0:** foto caricabili durante la creazione del capo, modifica
+completa di capi, box, vendite e spese; gestione di corriere, tracking e scadenze.
+La migrazione conserva i dati della versione 1.0 e crea una copia di sicurezza
+prima dell’aggiornamento del database.
 
 ## Cosa fa
 
-- Stock per capo: SKU, titolo, marca, taglia, categoria, condizione, costo,
+- Stock per capo, con fino a 12 foto: SKU, titolo, marca, taglia, categoria, condizione, costo,
   prezzo annuncio, posizione fisica, data acquisto, link e note.
 - Box: crea automaticamente tutti i capi e ripartisce il prezzo totale,
   spedizione inclusa, conservando ogni centesimo.
@@ -18,6 +19,8 @@ sono stati superati su GitHub Actions.
 - Resi completi e annullamenti: ripristinano lo stock mantenendo lo storico.
 - Dashboard: stock a costo, vendite completate, incassi, utile, saldo di cassa,
   andamento degli incassi mensili e capi acquistati da almeno 30 giorni.
+- Modifica completa di capi, box, vendite e spese, con ricalcolo dei margini.
+- Spedizioni: corriere, codice/link tracking, scadenza, date, stato e note.
 - Spese generali, importazione capi CSV, export stock e vendite.
 - Backup completo e ripristino con copia di sicurezza preventiva.
 
@@ -29,14 +32,14 @@ browser. I dati del negozio non vengono inviati a GitHub.
 
 Repository del progetto: [StockSOFTWARE](https://github.com/lowrenceportfolio/StockSOFTWARE).
 
-Apri [la build verificata](https://github.com/lowrenceportfolio/StockSOFTWARE/actions/runs/38546127005)
-e scarica l'artefatto **VintDesk-Windows-Installer** in fondo alla pagina.
-Estrai lo ZIP e avvia `VintDesk-Setup-1.0.0.exe` sul PC Windows.
-Non devi installare Python.
+Apri [GitHub Actions](https://github.com/lowrenceportfolio/StockSOFTWARE/actions),
+seleziona l’ultima build riuscita e scarica l’artefatto **VintDesk-Windows-Installer**.
+Estrai lo ZIP e avvia `VintDesk-Setup-1.1.0.exe` sul PC Windows.
+Non devi installare Python. Chiudi l’app prima di aggiornare: il setup installa
+la nuova versione nella stessa cartella e conserva il tuo database.
 
 Ogni push su `main` compila e verifica il software. Gli artefatti sono disponibili
-per 30 giorni: conserva una copia del setup. La pubblicazione automatica in
-Releases non è configurata; il workflow usa soltanto `contents: read`.
+per 30 giorni: conserva una copia del setup. Il workflow usa `contents: read`.
 
 La repo contiene il software. Stock, vendite e backup rimangono sul tuo PC.
 
@@ -62,8 +65,56 @@ Usa **Dati e backup → Backup completo** per copiarlo su un altro dispositivo.
    Inserisci commissioni e spedizione soltanto se sono a tuo carico.
 7. In **Vendite**, marca **Completata** dopo aver ricevuto il denaro.
 
-Per correggere il prezzo di una vendita: annullala e registrala di nuovo.
-Il costo di un capo da box è bloccato per mantenere coerente il totale.
+## Foto durante l’inserimento
+
+Apri **Stock → Aggiungi capo**. Nella stessa schermata, la scheda
+**Foto · carica dal PC** permette di scegliere una o più immagini con
+**Carica foto dal PC**. Premi **Salva** per registrare dati e foto insieme.
+Puoi aggiungere o rimuovere foto anche modificando un capo già salvato.
+Chiudere con Annulla non applica le modifiche alle immagini.
+
+JPG, PNG e WebP; massimo 12 foto per capo, 20 MB e 50 megapixel per file.
+Le immagini vengono orientate e salvate come JPEG con lato massimo 2000 pixel.
+Sono memorizzate nel database: puoi spostare gli originali senza perdere le
+foto e un backup completo include tutte le immagini. Il CSV non include foto.
+
+## Correggere i dati
+
+- **Stock → Modifica:** cambia tutti i dati e le foto, anche dopo una vendita.
+  Lo stato di un capo con vendita attiva è determinato dalla vendita.
+- Correggere il costo di un capo aggiorna il totale del box e il costo usato
+  per calcolare il margine della vendita attiva. Le vendite annullate mantengono
+  il loro storico, finché non le modifichi esplicitamente.
+- **Vendite → Modifica vendita:** cambia capo associato, date, prezzo,
+  commissioni, spedizione, compratore, note e stato, senza annullare prima.
+  Una vendita annullata può essere riattivata solo se il capo è libero.
+- **Box acquistati → Modifica box:** correggi nome, fornitore, data, quantità
+  e totale. Cambiare quantità o totale ridistribuisce il costo tra tutti i capi
+  e aggiorna il margine delle vendite attive, incluse quelle completate.
+  La riduzione della quantità rimuove solo gli ultimi capi ancora vuoti.
+- **Spese → Modifica spesa:** correggi data, descrizione e importo.
+- Un capo può essere Archiviato: esce dallo stock operativo, conservando il
+  costo negli acquisti e il saldo di cassa. Archiviare non registra una perdita.
+- I pulsanti Elimina servono a rimuovere inserimenti errati. L’eliminazione
+  richiede conferma. Capi e box con storico vendite non sono eliminabili;
+  per rimuoverli devi prima eliminare esplicitamente le vendite errate.
+  Per i resi usa Annulla / reso, così conservi lo storico.
+
+## Spedizioni
+
+Ogni vendita crea una spedizione nella sezione **Spedizioni**. Seleziona una
+riga e **Gestisci spedizione** per inserire corriere, codice e link tracking,
+scadenza, data di spedizione/consegna, stato e note.
+
+- Filtri: Da spedire, Tutte, Spedita, Consegnata, Problema e Scadute.
+- Le scadenze superate sono evidenziate e segnalate nella panoramica.
+- **Apri tracking** apre il link che hai inserito; **Copia codice** copia il codice.
+- Gli stati sono aggiornati manualmente: non interroga i corrieri.
+- Segnare Spedita aggiorna una vendita In attesa a Spedita. Consegnata non
+  registra automaticamente un incasso: completa la vendita quando ricevi i soldi.
+- Annullare una vendita annulla anche la spedizione. Le vecchie vendite
+  vengono inizializzate con lo stato spedizione derivato dalla vendita;
+  le date non conosciute rimangono vuote.
 
 ## Contabilità
 
@@ -109,6 +160,7 @@ interpretati come formule da un foglio di calcolo.
 Con Python 3.12 e Tkinter:
 
 ```bash
+python -m pip install -r requirements.txt
 python app.py
 python -m unittest discover -s tests -v
 python app.py --database test-ui.sqlite3 --smoke-test
@@ -123,7 +175,7 @@ Per compilare su Windows, installa Python 3.12 e Inno Setup 6, poi:
 .\build-windows.ps1
 ```
 
-Risultato: `output\VintDesk-Setup-1.0.0.exe`.
+Risultato: `output\VintDesk-Setup-1.1.0.exe`.
 La compilazione Windows deve avvenire su Windows: PyInstaller non genera
 eseguibili Windows da una normale compilazione Linux.
 
@@ -132,6 +184,7 @@ eseguibili Windows da una normale compilazione Linux.
 - `app.py`: interfaccia desktop e avvio.
 - `core.py`: database, contabilità, CSV e backup.
 - `tests/test_core.py`: verifiche dei flussi e dei conteggi.
+- `tests/test_upgrade.py`: foto, modifiche, spedizioni e migrazione dei dati.
 - `tests/test_ui.py`: verifica del percorso utente nell'interfaccia.
 - `installer/vintdesk.iss`: installazione per utente e collegamenti.
 - `build-windows.ps1`: compilazione locale e creazione setup.
