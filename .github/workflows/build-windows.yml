@@ -1,0 +1,55 @@
+name: Crea installer Windows
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    tags: ['v*']
+  pull_request:
+    branches: [main]
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    runs-on: windows-2025
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Test e creazione installer
+        shell: pwsh
+        run: ./build-windows.ps1
+      - name: Verifica interfaccia Python
+        shell: pwsh
+        run: |
+          python app.py --database "$env:RUNNER_TEMP\ui-test.sqlite3" --smoke-test
+          if ($LASTEXITCODE -ne 0) { throw 'Test interfaccia fallito' }
+      - name: Verifica eseguibile compilato
+        shell: pwsh
+        run: |
+          $process = Start-Process -FilePath 'dist\VintDesk\VintDesk.exe' -ArgumentList @('--database', "$env:RUNNER_TEMP\exe-test.sqlite3", '--smoke-test') -PassThru
+          if (-not $process.WaitForExit(60000)) { $process.Kill(); throw 'Test exe scaduto' }
+          if ($process.ExitCode -ne 0) { throw 'Eseguibile non funzionante' }
+      - name: Verifica installazione e disinstallazione
+        shell: pwsh
+        run: |
+          $target = "$env:RUNNER_TEMP\VintDeskInstalled"
+          $process = Start-Process -FilePath 'output\VintDesk-Setup-1.0.0.exe' -ArgumentList @('/VERYSILENT', '/SUPPRESSMSGBOXES', '/NORESTART', "/DIR=$target") -Wait -PassThru
+          if ($process.ExitCode -ne 0) { throw 'Installazione fallita' }
+          if (-not (Test-Path "$target\VintDesk.exe")) { throw 'Exe installato mancante' }
+          $app = Start-Process -FilePath "$target\VintDesk.exe" -ArgumentList @('--database', "$env:RUNNER_TEMP\installed-test.sqlite3", '--smoke-test') -PassThru
+          if (-not $app.WaitForExit(60000)) { $app.Kill(); throw 'Test app installata scaduto' }
+          if ($app.ExitCode -ne 0) { throw 'App installata non funzionante' }
+          $uninstall = Start-Process -FilePath "$target\unins000.exe" -ArgumentList @('/VERYSILENT','/SUPPRESSMSGBOXES','/NORESTART') -Wait -PassThru
+          if ($uninstall.ExitCode -ne 0) { throw 'Disinstallazione fallita' }
+      - name: Scarica installer da questo risultato
+        uses: actions/upload-artifact@v4
+        with:
+          name: VintDesk-Windows-Installer
+          path: output/VintDesk-Setup-1.0.0.exe
+          if-no-files-found: error
+          retention-days: 30
