@@ -41,21 +41,25 @@ Il workflow conserva `contents: read`. Nessun dato reale dell’utilizzatore
 - PyInstaller: compilazione riuscita; eseguibile verificato con --smoke-test e database isolato build/cloud-smoke.sqlite3 (exit 0).
 - Inno Setup: output/VintDesk-Setup-1.3.0.exe generato. Installer non installato sulla copia personale dell'utente.
 - Project URL e chiave pubblica: richiesta REST ricevuta da Supabase; tabella assente (PGRST205).
-- In attesa di accesso amministrativo tramite integrazione Supabase per applicare supabase/schema.sql. Nessuna migrazione live eseguita, nessun dato utente caricato, nessun test autenticato end-to-end eseguito.
+- Stato iniziale della build: schema non ancora applicato. Configurazione server completata nella verifica live riportata sotto; login e sincronizzazione end-to-end dal desktop con account reale restano da eseguire.
 - Interfaccia mobile non inclusa; contratto dati documentato in supabase/README.md.
 
 
-## Verifica Supabase — 15 ottobre 2026
+## Verifica Supabase live — 15 ottobre 2026
 
-Stato: configurazione bloccata per sorgente SQL mancante.
+Stato: schema applicato e regole di accesso verificate sul progetto `dgbooupbrxznjngpkxle` (`vendino`). Sorgenti controllati: commit `08148de`.
 
-- Progetto `dgbooupbrxznjngpkxle` (`vendino`): ACTIVE_HEALTHY, PostgreSQL 17.
-- Lo schema `public` non contiene tabelle al momento del controllo.
-- Security Advisor: nessuna segnalazione. Questo risultato su uno schema vuoto non dimostra la sicurezza dell’integrazione VintDesk.
-- Nel repository `lowrenceportfolio/StockSOFTWARE`, unico ramo remoto `main`, non esistono `supabase/schema.sql` né riferimenti a Supabase nei sorgenti controllati.
-- Nessuna modifica eseguita sul database. Applicazione dello schema e test di isolamento degli utenti/RLS non eseguiti: occorre la versione aggiornata del progetto che contiene l’integrazione desktop e il relativo SQL.
+- Applicato `supabase/schema.sql` con migrazione `vintdesk_ledger_initial`.
+- Applicata migrazione `vintdesk_ledger_least_privilege`: revocati i privilegi predefiniti a PUBLIC, anon e authenticated; ad authenticated concessi soltanto SELECT, INSERT e UPDATE. Corretto anche lo schema nel repository per riprodurre questa configurazione.
+- RLS attiva su `public.vintdesk_ledgers`; policy `own_ledger` con `auth.uid() = user_id` sia in USING sia in WITH CHECK. Il trigger è SECURITY INVOKER con search_path vuoto.
+- Test live in transazione con due identità temporanee e ruolo PostgreSQL authenticated: inserimento e lettura del proprio registro; registro altrui invisibile e non aggiornabile; inserimento per altro utente e cambio proprietario negati; DELETE negato.
+- Trigger verificato: revisione iniziale forzata a 1, incremento a 2 anche se il client propone 999; aggiornamento con revisione obsoleta modifica zero righe.
+- Ruolo anon: lettura negata. Verifica HTTP con la chiave pubblica del desktop: REST restituisce 401 / 42501 (permission denied), non più tabella assente.
+- Fixtures SQL completamente annullate con ROLLBACK: nessun account o registro di prova lasciato nel progetto; nessun dato personale usato.
+- Security Advisor dopo le modifiche: nessuna segnalazione.
+- Rieseguiti i 15 test locali di `tests/test_cloud.py`: tutti superati. Questi test simulano la rete.
+- Le foto sono incluse nel payload JSONB; questa versione non richiede bucket Storage né relative policy.
 
-Per completare: rendere disponibile `supabase/schema.sql`, confrontarlo con le chiamate del client, applicarlo e verificare autorizzazioni, isolamento tra utenti e accessi Storage previsti. I precedenti test Windows non costituiscono una verifica Supabase.
+Limite della verifica: i test SQL esercitano realmente RLS con ruoli e identità simulate, ma non sono un login Supabase Auth. Non eseguiti creazione/conferma account e upload/download end-to-end dal desktop con una sessione reale. Per il primo utilizzo: Dati e backup → Account cloud → Crea account, confermare l’email se richiesto, quindi Accedi e sincronizza. Lo stesso account condivide il registro tra dispositivi.
 
-
-Nota di pubblicazione: questo aggiornamento aggiunge i sorgenti cloud e supabase/schema.sql mancanti al momento della verifica precedente. Lo schema deve ancora essere applicato e verificato sul progetto Supabase.
+La precedente verifica bloccata per schema mancante è superata dalla pubblicazione dei sorgenti e dalle verifiche sopra.
