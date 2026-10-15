@@ -6,7 +6,7 @@ create table if not exists public.vintdesk_ledgers (
   updated_at timestamptz not null default now()
 );
 alter table public.vintdesk_ledgers enable row level security;
-revoke all on public.vintdesk_ledgers from anon;
+revoke all on public.vintdesk_ledgers from public, anon, authenticated;
 grant select, insert, update on public.vintdesk_ledgers to authenticated;
 drop policy if exists own_ledger on public.vintdesk_ledgers;
 create policy own_ledger on public.vintdesk_ledgers for all to authenticated
