@@ -10,3 +10,12 @@ output/
 *.log
 screenshots/
 .DS_Store
+
+# Pilcrow Rounded (ITF Free Font License): non ridistribuire i file nel repository; la build li scarica.
+assets/fonts/
+.taste-skill/mock/fonts/
+.taste-skill/inspect/
+.playwright-cli/
+
+# Impostazioni personali della connessione cloud
+*.cloud.json

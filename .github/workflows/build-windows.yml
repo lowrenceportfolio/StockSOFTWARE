@@ -38,7 +38,7 @@ jobs:
         shell: pwsh
         run: |
           $target = "$env:RUNNER_TEMP\VintDeskInstalled"
-          $process = Start-Process -FilePath 'output\VintDesk-Setup-1.1.0.exe' -ArgumentList @('/VERYSILENT', '/SUPPRESSMSGBOXES', '/NORESTART', "/DIR=$target") -Wait -PassThru
+          $process = Start-Process -FilePath 'output\VintDesk-Setup-1.3.0.exe' -ArgumentList @('/VERYSILENT', '/SUPPRESSMSGBOXES', '/NORESTART', "/DIR=$target") -Wait -PassThru
           if ($process.ExitCode -ne 0) { throw 'Installazione fallita' }
           if (-not (Test-Path "$target\VintDesk.exe")) { throw 'Exe installato mancante' }
           $app = Start-Process -FilePath "$target\VintDesk.exe" -ArgumentList @('--database', "$env:RUNNER_TEMP\installed-test.sqlite3", '--smoke-test') -PassThru
@@ -50,6 +50,6 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: VintDesk-Windows-Installer
-          path: output/VintDesk-Setup-1.1.0.exe
+          path: output/VintDesk-Setup-1.3.0.exe
           if-no-files-found: error
           retention-days: 30

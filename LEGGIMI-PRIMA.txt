@@ -1,0 +1,21 @@
+VINTDESK 1.3 - SINCRONIZZAZIONE SUPABASE
+
+PER INSTALLARE IL SOFTWARE:
+Apri output/VintDesk-Setup-1.3.0.exe su Windows 10/11 a 64 bit.
+Non serve Python. Chiudi la vecchia app prima di aggiornarla.
+La cartella installer-compilato contiene una versione precedente.
+
+CLOUD:
+Project URL e chiave pubblica sono già configurati.
+Prima deve essere applicato supabase/schema.sql al progetto Supabase.
+Poi apri Dati e backup > Account cloud, crea il tuo account e accedi.
+Usa lo stesso account sulla futura versione mobile.
+Leggi supabase/README.md per funzionamento, conflitti e limiti.
+L'interfaccia mobile non è ancora inclusa.
+
+PER APRIRE I SORGENTI:
+  python -m pip install -r requirements.txt
+  python app.py
+
+PER RICOMPILARE:
+Installa Python e Inno Setup 6, poi esegui build-windows.ps1.

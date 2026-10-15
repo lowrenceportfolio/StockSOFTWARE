@@ -4,7 +4,7 @@ import io
 import os
 import sqlite3
 import uuid
-from datetime import date, datetime
+from datetime import date, datetime, timedelta
 from decimal import Decimal, InvalidOperation
 from pathlib import Path
 from urllib.parse import urlparse
@@ -33,10 +33,15 @@ def money(value):
     return f'{value / 100:,.2f}'.replace(',', '_').replace('.', ',').replace('_', '.') + ' €'
 
 def iso_date(value):
+    """Accetta 2026-10-14 oppure il formato italiano 14/10/2026 (anche 14.10.2026)."""
+    text = str(value).strip()
     try:
-        return date.fromisoformat(str(value)).isoformat()
+        if '/' in text or '.' in text:
+            day, month, year = text.replace('.', '/').split('/')
+            return date(int(year), int(month), int(day)).isoformat()
+        return date.fromisoformat(text).isoformat()
     except ValueError as exc:
-        raise ValueError('La data deve essere AAAA-MM-GG.') from exc
+        raise ValueError('Data non valida: scrivila come 14/10/2026.') from exc
 
 def optional_date(value):
     return iso_date(value) if str(value or '').strip() else ''
@@ -326,7 +331,7 @@ class Store:
             self.db.execute('DELETE FROM lots WHERE id=?', (ident,))
 
     def items(self, search='', status='Tutti'):
-        sql, params = 'SELECT items.*, lots.name AS lot_name,(SELECT COUNT(*) FROM photos WHERE item_id=items.id) AS photo_count FROM items LEFT JOIN lots ON lots.id=items.lot_id WHERE 1=1', []
+        sql, params = "SELECT items.*, lots.name AS lot_name,(SELECT COUNT(*) FROM photos WHERE item_id=items.id) AS photo_count,(SELECT MIN(id) FROM photos WHERE item_id=items.id) AS photo_id,CASE WHEN items.status IN ('Venduto','Archiviato') THEN NULL ELSE CAST(julianday('now','localtime')-julianday(items.bought_on) AS INTEGER) END AS age FROM items LEFT JOIN lots ON lots.id=items.lot_id WHERE 1=1", []
         if search:
             sql += " AND (title LIKE ? ESCAPE '\\' OR sku LIKE ? ESCAPE '\\' OR brand LIKE ? ESCAPE '\\' OR location LIKE ? ESCAPE '\\')"
             literal = search.replace('\\', '\\\\').replace('%', '\\%').replace('_', '\\_')
@@ -513,14 +518,79 @@ class Store:
         expenses = self.db.execute('SELECT COALESCE(SUM(amount),0) FROM expenses').fetchone()[0]
         purchases = self.db.execute('SELECT COALESCE(SUM(cost),0) FROM items').fetchone()[0]
         pending = self.db.execute("SELECT COUNT(*) FROM sales WHERE status IN ('In attesa','Spedita')").fetchone()[0]
+        drafts = self.db.execute("SELECT COUNT(*) FROM items WHERE status='Da pubblicare'").fetchone()[0]
         return dict(stock_count=stock[0], stock_value=stock[1], sold_count=sales[0], revenue=sales[1],
                     profit=sales[2]-expenses, cash=sales[3]-purchases-expenses, expenses=expenses, pending=pending,
-                    overdue=len(self.shipments('Scadute')))
+                    overdue=len(self.shipments('Scadute')), drafts=drafts,
+                    to_ship=len(self.shipments('Da spedire')))
 
     def monthly(self):
-        return self.rows("""SELECT substr(sold_on,1,7) AS month,SUM(price) AS revenue,
+        return self.rows("""SELECT substr(sold_on,1,7) AS month,SUM(price) AS revenue,COUNT(*) AS sold,
           SUM(price-fees-shipping-cost_snapshot) AS profit FROM sales WHERE status='Completata'
           GROUP BY month ORDER BY month DESC LIMIT 6""")[::-1]
+
+    def performance(self):
+        """Indicatori di resa sulle vendite completate: margine, ROI, giorni medi di vendita, sell-through."""
+        row = self.db.execute("""SELECT COUNT(*),COALESCE(SUM(price),0),COALESCE(SUM(price-fees-shipping-cost_snapshot),0),
+            COALESCE(SUM(cost_snapshot),0),AVG(julianday(sold_on)-julianday(items.bought_on))
+            FROM sales JOIN items ON items.id=sales.item_id WHERE sales.status='Completata'""").fetchone()
+        count, revenue, margin, cost, days = row
+        listed = self.db.execute("SELECT COUNT(*) FROM items WHERE status!='Da pubblicare' AND status!='Archiviato'").fetchone()[0]
+        return dict(avg_margin=margin//count if count else 0,
+                    margin_pct=round(margin*100/revenue, 1) if revenue else None,
+                    roi_pct=round(margin*100/cost, 1) if cost else None,
+                    avg_days=round(max(days, 0)) if days is not None else None,
+                    sell_through=round(count*100/listed) if listed else None)
+
+    def top_brands(self, limit=5):
+        return self.rows("""SELECT CASE WHEN items.brand='' THEN 'Senza marca' ELSE items.brand END AS brand,
+            COUNT(*) AS sold,SUM(price-fees-shipping-cost_snapshot) AS profit
+            FROM sales JOIN items ON items.id=sales.item_id WHERE sales.status='Completata'
+            GROUP BY brand ORDER BY profit DESC,sold DESC LIMIT ?""", (limit,))
+
+    def stale_items(self, days=30):
+        limit = (date.today() - timedelta(days=days)).isoformat()
+        return self.rows("SELECT id,title,bought_on FROM items WHERE status='In vendita' AND bought_on<=? ORDER BY bought_on",
+                         (limit,))
+
+    def set_items_status(self, ids, status):
+        """Cambia lo stato di più capi liberi (senza vendita attiva). Restituisce quanti ne ha aggiornati."""
+        if status not in STOCK_STATES:
+            raise ValueError('Stato stock non valido.')
+        changed = 0
+        with self.db:
+            for ident in ids:
+                self.item(ident)
+                if self.active_sale(ident):
+                    continue
+                self.db.execute('UPDATE items SET status=? WHERE id=?', (status, ident))
+                changed += 1
+        return changed
+
+    def duplicate_item(self, ident):
+        """Copia i dati del capo (senza foto, vendite e link) per inserire rapidamente capi simili."""
+        old = self.item(ident)
+        data = dict(old, sku='', status='Da pubblicare', url='', lot_id=None,
+                    cost=f"{old['cost']/100:.2f}", asking=f"{old['asking']/100:.2f}",
+                    title=old['title'])
+        return self.add_item(data)
+
+    AUTO_BACKUP_KEEP = 7
+
+    def auto_backup(self, min_hours=20):
+        """Copia automatica giornaliera in <dati>/backup-automatici, con rotazione. Restituisce il percorso o None."""
+        folder = self.path.parent / 'backup-automatici'
+        if not self.db.execute('SELECT 1 FROM items LIMIT 1').fetchone():
+            return None
+        existing = sorted(folder.glob('auto-*.sqlite3')) if folder.exists() else []
+        if existing and datetime.now().timestamp() - existing[-1].stat().st_mtime < min_hours * 3600:
+            return None
+        folder.mkdir(exist_ok=True)
+        target = folder / ('auto-' + datetime.now().strftime('%Y%m%d-%H%M%S') + '.sqlite3')
+        self.backup(target)
+        for old in sorted(folder.glob('auto-*.sqlite3'))[:-self.AUTO_BACKUP_KEEP]:
+            old.unlink()
+        return target
 
     def export_csv(self, path, kind='stock'):
         if kind == 'stock':

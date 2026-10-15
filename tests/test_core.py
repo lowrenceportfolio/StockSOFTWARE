@@ -4,9 +4,9 @@ import tempfile
 import unittest
 from pathlib import Path
 
-from core import Store, cents
+from core import Store, cents, iso_date
 
-class LedgerTests(unittest.TestCase):
+class StoreCase(unittest.TestCase):
     def setUp(self):
         self.temp = tempfile.TemporaryDirectory()
         self.root = Path(self.temp.name)
@@ -24,6 +24,8 @@ class LedgerTests(unittest.TestCase):
     def sale(self, ident, status='Completata'):
         return self.store.record_sale(ident,'2026-10-14','15','0.5','1',status)
 
+
+class LedgerTests(StoreCase):
     def test_box_allocation_is_exact(self):
         self.store.add_lot('Box 3','Fornitore','2026-10-14','100',3)
         items = self.store.items()
@@ -167,6 +169,64 @@ class LedgerTests(unittest.TestCase):
                 other.record_sale(ident,'2026-10-14','30','0','0','Completata')
         finally:
             other.close()
+
+class InsightTests(StoreCase):
+    def test_performance_and_top_brands(self):
+        self.assertEqual(self.store.performance()['avg_days'],None)
+        a = self.item(brand='Nike',bought_on='2026-10-04')
+        b = self.item(brand='Zara',sku='VD-B',cost='10',bought_on='2026-10-10')
+        self.store.record_sale(a,'2026-10-14','20','0','0','Completata')   # margine 13, 10 giorni
+        self.store.record_sale(b,'2026-10-14','12','0','0','Completata')   # margine 2, 4 giorni
+        perf = self.store.performance()
+        self.assertEqual(perf['avg_margin'],750)
+        self.assertEqual(perf['avg_days'],7)
+        self.assertEqual(perf['roi_pct'],88.2)
+        self.assertEqual(perf['sell_through'],100)
+        self.assertEqual([r['brand'] for r in self.store.top_brands()],['Nike','Zara'])
+
+    def test_bulk_status_skips_items_with_active_sale(self):
+        free, sold = self.item(), self.item(sku='VD-S')
+        self.sale(sold,'In attesa')
+        self.assertEqual(self.store.set_items_status([free,sold],'In vendita'),1)
+        self.assertEqual(self.store.item(free)['status'],'In vendita')
+        self.assertEqual(self.store.item(sold)['status'],'Riservato')
+        with self.assertRaises(ValueError):
+            self.store.set_items_status([free],'Venduto')
+
+    def test_duplicate_keeps_data_but_not_link_status_or_sku(self):
+        ident = self.item(brand='Levis',url='https://www.vinted.it/items/1',status='In vendita')
+        copy = self.store.item(self.store.duplicate_item(ident))
+        self.assertEqual((copy['brand'],copy['cost'],copy['url'],copy['status']),('Levis',700,'','Da pubblicare'))
+        self.assertNotEqual(copy['sku'],self.store.item(ident)['sku'])
+
+    def test_stale_items_and_age(self):
+        old = self.item(bought_on='2020-01-01',status='In vendita')
+        self.item(sku='VD-NEW',status='In vendita')
+        self.assertEqual([r['id'] for r in self.store.stale_items()],[old])
+        self.assertGreater(self.store.items()[1]['age'],1000)
+
+    def test_auto_backup_rotates_and_is_daily(self):
+        self.assertIsNone(self.store.auto_backup())            # vuoto: niente da salvare
+        self.item()
+        first = self.store.auto_backup()
+        self.assertTrue(first.exists())
+        self.assertIsNone(self.store.auto_backup())            # già salvato oggi
+        folder = first.parent
+        for n in range(10):
+            (folder/f'auto-2020010{n}-000000.sqlite3').write_bytes(b'x')
+        import os, time
+        os.utime(first,(time.time()-90000,)*2)
+        self.store.auto_backup()
+        self.assertLessEqual(len(list(folder.glob('auto-*.sqlite3'))),Store.AUTO_BACKUP_KEEP)
+
+class DateTests(unittest.TestCase):
+    def test_italian_and_iso_dates(self):
+        self.assertEqual(iso_date('14/10/2026'),'2026-10-14')
+        self.assertEqual(iso_date('4.1.2026'),'2026-01-04')
+        self.assertEqual(iso_date('2026-10-14'),'2026-10-14')
+        for wrong in ('31/02/2026','14/10','ieri'):
+            with self.assertRaises(ValueError):
+                iso_date(wrong)
 
 if __name__ == '__main__':
     unittest.main()

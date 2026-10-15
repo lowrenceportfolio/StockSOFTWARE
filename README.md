@@ -1,14 +1,17 @@
 # VintDesk
 
 Gestionale desktop personale per stock e vendite Vinted. Interfaccia italiana,
-database SQLite locale, nessun abbonamento. L’installer include Python e Pillow;
+database SQLite locale e sincronizzazione facoltativa con Supabase. L’installer include Python e Pillow;
 per avviare i sorgenti occorre installare le dipendenze di requirements.txt.
 
-**Versione 1.1.0:** foto caricabili durante la creazione del capo, modifica
-completa di capi, box, vendite e spese; gestione di corriere, tracking e scadenze.
-La migrazione conserva i dati della versione 1.0 e crea una copia di sicurezza
-prima dell’aggiornamento del database. Tutti i 33 test e i controlli Windows
-di avvio, foto, installazione e disinstallazione sono stati superati.
+**Versione 1.3.0:** accesso Supabase, sincronizzazione del registro e delle foto, protezione dei conflitti e backup prima dei download. Configurazione e limiti in [supabase/README.md](supabase/README.md). La futura interfaccia mobile potrà usare lo stesso account e lo stesso database.
+
+**Versione 1.2.0:** panoramica operativa (cosa fare oggi, margine medio, ROI,
+giorni alla vendita, marche più redditizie), stock con età dei capi, duplicazione
+e cambio stato multiplo, ricerca e filtri nelle vendite, scorciatoie da tastiera,
+interfaccia nitida su schermi ad alta risoluzione e backup automatico giornaliero.
+La versione 1.1 ha introdotto foto, modifica completa e spedizioni; i dati si
+migrano senza interventi. I test automatici sono 58.
 
 ## Cosa fa
 
@@ -35,14 +38,14 @@ Repository del progetto: [StockSOFTWARE](https://github.com/lowrenceportfolio/St
 
 Apri [GitHub Actions](https://github.com/lowrenceportfolio/StockSOFTWARE/actions),
 seleziona l’ultima build riuscita e scarica l’artefatto **VintDesk-Windows-Installer**.
-Estrai lo ZIP e avvia `VintDesk-Setup-1.1.0.exe` sul PC Windows.
+Estrai lo ZIP e avvia `VintDesk-Setup-1.3.0.exe` sul PC Windows.
 Non devi installare Python. Chiudi l’app prima di aggiornare: il setup installa
 la nuova versione nella stessa cartella e conserva il tuo database.
 
 Ogni push su `main` compila e verifica il software. Gli artefatti sono disponibili
 per 30 giorni: conserva una copia del setup. Il workflow usa `contents: read`.
 
-La repo contiene il software. Stock, vendite e backup rimangono sul tuo PC.
+La repo contiene il software. Stock e vendite restano sul PC e, quando attivi la sincronizzazione, vengono copiati nel tuo progetto Supabase insieme alle foto. I backup rimangono locali.
 
 ## Installazione e dati
 
@@ -117,6 +120,24 @@ scadenza, data di spedizione/consegna, stato e note.
   vengono inizializzate con lo stato spedizione derivato dalla vendita;
   le date non conosciute rimangono vuote.
 
+## Novità della 1.2
+
+- **Panoramica:** blocco "Da fare" con pulsanti diretti (spedizioni da inviare o scadute,
+  capi da pubblicare, capi fermi da 30 giorni), grafico incassi/utile per mese e indicatori
+  di resa: margine medio, ROI sul costo, giorni medi tra acquisto e vendita, percentuale venduta.
+- **Stock:** colonna Giorni (età del capo, in rosso se in vendita da 30 giorni o più),
+  selezione multipla con **Segna in vendita** e **Archivia**, **Duplica** per capi simili,
+  pareggio e margine atteso nel dettaglio.
+- **Vendite:** ricerca, filtro per stato, margine percentuale e totale dei risultati visibili.
+- **Tastiera:** Ctrl+1…7 cambia pagina, Ctrl+N nuovo capo, Ctrl+F cerca, F5 aggiorna,
+  Invio apre la riga selezionata; i controlli hanno un contorno di focus visibile.
+- **Nuovo aspetto:** tema scuro con un solo accento teal; la forma del cartellino del prezzo
+  è il pulsante principale, il riquadro dell'utile, la cornice della foto e l'indicatore di stato
+  nelle miniature dello stock. Cursore "Quanto vuoi guadagnare" in panoramica: calcola quanti capi
+  vendere al tuo margine medio reale. Date accettate anche come 14/10/2026.
+- **Backup automatico:** alla chiusura, al massimo uno ogni 20 ore, in
+  `%LOCALAPPDATA%\VintDesk\backup-automatici` (ultime 7 copie). Restano sul PC: copiale altrove.
+
 ## Contabilità
 
 Tutti gli importi vengono memorizzati come centesimi interi. Gli importi
@@ -180,9 +201,18 @@ Risultato: `output\VintDesk-Setup-1.1.0.exe`.
 La compilazione Windows deve avvenire su Windows: PyInstaller non genera
 eseguibili Windows da una normale compilazione Linux.
 
+## Design
+
+Riferimenti e regole sono in `.taste-skill/`: `direction.json` (direzione estratta), `mock/*.html`
+e `mock/ref-*.png` (i riferimenti visivi da cui è tradotta l'interfaccia Tkinter). Token e
+componenti stanno in `ui_kit.py`. Il carattere Pilcrow Rounded (Indian Type Foundry, Free Font
+License) è incluso nell'installer ma non nel repository: `build-windows.ps1` lo scarica da
+Fontshare in `assets/fonts/`. Senza font l'app usa Segoe UI.
+
 ## Struttura
 
 - `app.py`: interfaccia desktop e avvio.
+- `ui_kit.py`: colori, tipografia e componenti a forma di cartellino.
 - `core.py`: database, contabilità, CSV e backup.
 - `tests/test_core.py`: verifiche dei flussi e dei conteggi.
 - `tests/test_upgrade.py`: foto, modifiche, spedizioni e migrazione dei dati.

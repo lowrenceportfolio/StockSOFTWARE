@@ -24,6 +24,32 @@ class DesktopFlowTests(unittest.TestCase):
     def dialog(self):
         return next(child for child in self.app.winfo_children() if isinstance(child,Form))
 
+    def test_cloud_download_is_deferred_if_local_changes_during_request(self):
+        from cloud import Supabase, PROJECT_URL, snapshot
+        controller = self.app.cloud
+        controller.client = Supabase(PROJECT_URL)
+        controller.client.user_id = 'test-user'
+        remote = snapshot(self.store)
+        callbacks = []
+        controller.run = lambda work, done, manual=True: callbacks.append(done)
+        controller.sync()
+        ident = self.store.add_item(dict(title='Modifica durante rete',cost='1',asking='2'))
+        callbacks[0](('pull', 1, remote))
+        self.assertEqual(self.store.item(ident)['title'], 'Modifica durante rete')
+        self.assertIn('rinviato', controller.status.get())
+
+    def test_cloud_settings_display_default_project_without_password_persistence(self):
+        import tkinter as tk
+        from cloud import PROJECT_URL
+        self.app.show('data')
+        self.app.cloud.configure()
+        dialog = next(child for child in self.app.winfo_children() if isinstance(child, tk.Toplevel))
+        entries = [w for w in dialog.winfo_children()[0].winfo_children() if w.winfo_class() == 'TEntry']
+        self.assertEqual(entries[0].get(), PROJECT_URL)
+        self.assertEqual(entries[2].cget('show'), '*')
+        self.assertFalse(self.app.cloud.settings_path.exists())
+        dialog.destroy()
+
     def test_lot_item_sale_and_completion(self):
         self.app.lot_form()
         form = self.dialog()
@@ -141,6 +167,32 @@ class DesktopFlowTests(unittest.TestCase):
         form.submit()
         self.app.update()
         self.assertEqual(self.store.expense(expense)['amount'],200)
+
+    def test_dates_in_italian_format_and_error_focus(self):
+        self.app.expense_form()
+        form = self.dialog()
+        self.assertRegex(form.variables['spent_on'].get(),r'^\d\d/\d\d/\d{4}$')
+        form.variables['description'].set('Buste')
+        form.variables['amount'].set('abc')
+        form.submit()
+        self.app.update()
+        self.assertTrue(form.winfo_exists())
+        self.assertIs(form.focus_lastfor(),form.widgets[2])
+        form.variables['amount'].set('2,50')
+        form.variables['spent_on'].set('01/09/2026')
+        form.submit()
+        self.app.update()
+        self.assertEqual(self.store.rows('SELECT spent_on,amount FROM expenses'),[{'spent_on':'2026-09-01','amount':250}])
+
+    def test_goal_slider_and_cancel_without_changes(self):
+        self.app.show('dashboard')
+        self.app.goal.set(300)
+        self.app.update()
+        self.app.item_form()
+        form = self.dialog()
+        form.cancel()
+        self.app.update()
+        self.assertFalse(form.winfo_exists())
 
 if __name__=='__main__':
     unittest.main()
